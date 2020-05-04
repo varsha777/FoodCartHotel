@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:foodcarthotel/add_new_item.dart';
+import 'package:foodcarthotel/dashboard_screens/canclled.dart';
 import 'package:foodcarthotel/dashboard_screens/completed.dart';
 import 'package:foodcarthotel/dashboard_screens/in_progress.dart';
 import 'package:foodcarthotel/dashboard_screens/orders_screen.dart';
@@ -30,6 +31,9 @@ class _DashboardState extends State<Dashboard> {
         case 2:
           appBarTitle = "Completed";
           break;
+        case 3:
+          appBarTitle = "Cancelled";
+          break;
       }
     });
   }
@@ -42,20 +46,21 @@ class _DashboardState extends State<Dashboard> {
     pageController = new PageController();
     return Scaffold(
       appBar: AppBar(
-              title: Text(appBarTitle),
-              actions: <Widget>[
-                IconButton(
-                  icon: Icon(Icons.add),
-                  onPressed: () {
-                    Navigator.push(context, MaterialPageRoute(builder: (BuildContext context)=>AddNewItem()));
-                  },
-                )
-              ],
-            ),
+        title: Text(appBarTitle),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.add),
+            onPressed: () {
+              Navigator.push(
+                  context, MaterialPageRoute(builder: (BuildContext context) => AddNewItem()));
+            },
+          )
+        ],
+      ),
 //      body: _children[_currentIndex],
       body: pageView = new PageView(
         physics: NeverScrollableScrollPhysics(),
-        children: [Orders(), InProgress(), Completed()],
+        children: [Orders(), InProgress(), Completed(), Cancelled()],
         controller: pageController,
       ),
       resizeToAvoidBottomPadding: false,
@@ -97,6 +102,14 @@ class _DashboardState extends State<Dashboard> {
                 color: Colors.black,
               ),
               title: new Text('Completed'),
+            ),
+            BottomNavigationBarItem(
+              icon: new Icon(Icons.close),
+              activeIcon: new Icon(
+                Icons.close,
+                color: Colors.black,
+              ),
+              title: new Text('Canclled'),
             ),
           ],
         ),

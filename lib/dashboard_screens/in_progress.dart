@@ -24,6 +24,7 @@ class _InProgressState extends State<InProgress> {
   }
 
   _loadInitialData() async {
+    if (!mounted) return;
     setState(() {
       isApiLoading = true;
     });
@@ -45,9 +46,10 @@ class _InProgressState extends State<InProgress> {
         });
       }
 
-      setState(() {
-        isApiLoading = false;
-      });
+      if (this.mounted)
+        setState(() {
+          isApiLoading = false;
+        });
     });
   }
 
@@ -59,25 +61,25 @@ class _InProgressState extends State<InProgress> {
       key: _scaffoldKey,
       body: isApiLoading
           ? Center(
-        child: CircularProgressIndicator(),
-      )
+              child: CircularProgressIndicator(),
+            )
           : _ordersList.length == 0
-          ? Center(
-        child: Text("No new orders available"),
-      )
-          : ListView.builder(
-          itemCount: _ordersList.length,
-          itemBuilder: (context, index) {
-            return OrdersItemRow(
-              _ordersList[index],
-              onCallBack: () {
-                _loadInitialData();
-              },
-              callbackStatus: (String Status) {
-                _sendEmail(_ordersList[index], Status);
-              },
-            );
-          }),
+              ? Center(
+                  child: Text("No new orders available"),
+                )
+              : ListView.builder(
+                  itemCount: _ordersList.length,
+                  itemBuilder: (context, index) {
+                    return OrdersItemRow(
+                      _ordersList[index],
+                      onCallBack: () {
+                        _loadInitialData();
+                      },
+                      callbackStatus: (String Status) {
+                        _sendEmail(_ordersList[index], Status);
+                      },
+                    );
+                  }),
     );
   }
 
@@ -283,7 +285,7 @@ class OrdersItemRow extends StatelessWidget {
   }
 
   String getTimeData() {
-    var date = new DateTime.fromMillisecondsSinceEpoch(int.parse(_orderModel.orderId) * 1000);
+    var date = new DateTime.fromMillisecondsSinceEpoch(int.parse(_orderModel.orderId),isUtc: true);
     var format = new DateFormat('EEE, d MMM hh:mm aaa');
     return format.format(date);
   }

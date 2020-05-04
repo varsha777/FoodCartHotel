@@ -12,7 +12,8 @@ class Orders extends StatefulWidget {
   _OrdersState createState() => _OrdersState();
 }
 
-class _OrdersState extends State<Orders> with AutomaticKeepAliveClientMixin<Orders> {
+class _OrdersState extends State<Orders> {
+  ///with AutomaticKeepAliveClientMixin<Orders>
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey();
   bool isApiLoading = false;
   List<OrderModel> _ordersList = List();
@@ -24,6 +25,7 @@ class _OrdersState extends State<Orders> with AutomaticKeepAliveClientMixin<Orde
   }
 
   _loadInitialData() async {
+    if (!mounted) return;
     setState(() {
       isApiLoading = true;
     });
@@ -45,9 +47,10 @@ class _OrdersState extends State<Orders> with AutomaticKeepAliveClientMixin<Orde
         });
       }
 
-      setState(() {
-        isApiLoading = false;
-      });
+      if (this.mounted)
+        setState(() {
+          isApiLoading = false;
+        });
     });
   }
 
@@ -71,10 +74,22 @@ class _OrdersState extends State<Orders> with AutomaticKeepAliveClientMixin<Orde
                     return OrdersItemRow(
                       _ordersList[index],
                       onCallBack: () {
-                        _loadInitialData();
+//                        _loadInitialData();
                       },
-                      callbackStatus: (String Status) {
-                        _sendEmail(_ordersList[index], Status);
+                      callbackStatus: (String status) {
+                        //Cancelled
+                        if (status == "Cancelled") {
+                          _showCancelNoteDialog(context, (String _cancelNote) {
+                            _loadInitialData();
+                            _sendCancelEmail(_ordersList[index],
+                                _cancelNote.isEmpty ? "Lack of ingridents" : _cancelNote);
+                            return true;
+                          });
+                        } else {
+                          _loadInitialData();
+                          _sendEmail(_ordersList[index], status);
+                        }
+                        return true;
                       },
                     );
                   }),
@@ -108,8 +123,66 @@ class _OrdersState extends State<Orders> with AutomaticKeepAliveClientMixin<Orde
     }
   }
 
-  @override
-  bool get wantKeepAlive => true;
+  void _sendCancelEmail(OrderModel orderModel, String cancelNote) async {
+    final smtpServer = gmail(username, password);
+    final message = Message()
+      ..from = Address(username, 'Food Cart')
+      ..recipients.add(orderModel.Email)
+      ..subject = 'Order NO.#${orderModel.orderNo}- Cancelled'
+      ..text =
+          "Hi ${orderModel.Name},\n \t Sorry for inconvinence, your order has been Cancelled due to \'$cancelNote\' Thank for ordering from FOOD CART."
+      ..html =
+          "<h3>Hi ${orderModel.Name},</h3>\n \t <h4>Sorry for inconvenience, your order has been Cancelled due to</h4><h2>\n \'$cancelNote\' </h2>\n <h3>Thank for ordering from FOOD CART.</h3>";
+
+    try {
+      final sendReport = await send(message, smtpServer);
+      print('Message sent: ' + sendReport.toString());
+    } on MailerException catch (e) {
+      print('Message not sent.');
+      for (var p in e.problems) {
+        print('Problem: ${p.code}: ${p.msg}');
+      }
+    }
+  }
+
+  void _showCancelNoteDialog(context, changeValue callbackNote) {
+    TextEditingController _controller = new TextEditingController();
+    showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text("Cancel order note"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: "Enter cancel note here..",
+                  ),
+                ),
+                FlatButton(
+                    onPressed: () {
+                      if (_controller.text.isEmpty) {
+                        Fluttertoast.showToast(
+                            msg: "Note can't be empty",
+                            toastLength: Toast.LENGTH_SHORT,
+                            gravity: ToastGravity.CENTER,
+                            timeInSecForIosWeb: 1,
+                            backgroundColor: Colors.red,
+                            textColor: Colors.white,
+                            fontSize: 16.0);
+                      } else {
+                        callbackNote(_controller.text.toString().trim());
+                        Navigator.of(context).pop();
+                      }
+                    },
+                    child: Text("Update"))
+              ],
+            ),
+          );
+        });
+  }
 }
 
 typedef changeValue = bool Function(String);
@@ -241,7 +314,7 @@ class OrdersItemRow extends StatelessWidget {
           title: new Text('Update Order Status'),
           content: Container(
             child: Column(
-              mainAxisSize: MainAxisSize.max,
+              mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 GestureDetector(
                   onTap: () {
@@ -263,14 +336,17 @@ class OrdersItemRow extends StatelessWidget {
                           fontSize: 16.0);
                     });
                   },
-                  child: Row(
-                    children: <Widget>[
-                      Icon(Icons.sync),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: new Text(' In-progress'),
-                      ),
-                    ],
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 15.h),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(Icons.sync),
+                        Padding(
+                          padding: EdgeInsets.only(left: 10.w),
+                          child: new Text(' In-progress'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 GestureDetector(
@@ -293,14 +369,49 @@ class OrdersItemRow extends StatelessWidget {
                           fontSize: 16.0);
                     });
                   },
-                  child: Row(
-                    children: <Widget>[
-                      new Icon(Icons.done_outline),
-                      Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
-                        child: new Text('Completed'),
-                      ),
-                    ],
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 15.h),
+                    child: Row(
+                      children: <Widget>[
+                        new Icon(Icons.done_outline),
+                        Padding(
+                          padding: EdgeInsets.only(left: 10.w),
+                          child: new Text('Completed'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {
+                    Firestore.instance
+                        .collection("OrderHistory")
+                        .document(documentID)
+                        .updateData({"status": "Cancelled"}).then((_onValue) {
+                      Navigator.of(context).pop();
+                      callbackStatus("Cancelled");
+                    }, onError: (_error) {
+                      Fluttertoast.showToast(
+                          msg: "${_error.toString()}",
+                          toastLength: Toast.LENGTH_SHORT,
+                          gravity: ToastGravity.CENTER,
+                          timeInSecForIosWeb: 1,
+                          backgroundColor: Colors.red,
+                          textColor: Colors.white,
+                          fontSize: 16.0);
+                    });
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(top: 15.h),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(Icons.close),
+                        Padding(
+                          padding: EdgeInsets.only(left: 10.w),
+                          child: new Text(' Cancel Order'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -312,7 +423,7 @@ class OrdersItemRow extends StatelessWidget {
   }
 
   String getTimeData() {
-    var date = new DateTime.fromMillisecondsSinceEpoch(int.parse(_orderModel.orderId) * 1000);
+    var date = new DateTime.fromMillisecondsSinceEpoch(int.parse(_orderModel.orderId),isUtc: true);
     var format = new DateFormat('EEE, d MMM hh:mm aaa');
     return format.format(date);
   }

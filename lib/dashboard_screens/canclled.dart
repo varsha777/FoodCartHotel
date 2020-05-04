@@ -6,12 +6,12 @@ import 'package:intl/intl.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server/gmail.dart';
 
-class Completed extends StatefulWidget {
+class Cancelled extends StatefulWidget {
   @override
-  _CompletedState createState() => _CompletedState();
+  _CancelledState createState() => _CancelledState();
 }
 
-class _CompletedState extends State<Completed> {
+class _CancelledState extends State<Cancelled> {
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey();
   bool isApiLoading = false;
   List<OrderModel> _ordersList = List();
@@ -29,7 +29,7 @@ class _CompletedState extends State<Completed> {
     });
     Firestore.instance
         .collection("OrderHistory")
-        .where("status", isEqualTo: "Completed")
+        .where("status", isEqualTo: "Cancelled")
         .getDocuments()
         .then((QuerySnapshot snapshot) {
       if (snapshot.documents.length > 0) {
